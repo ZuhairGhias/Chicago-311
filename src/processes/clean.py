@@ -8,8 +8,8 @@ def convert_types(df: pd.DataFrame):
         df: The pandas DataFrame to analyze.
     """
     # Convert date columns to datetime objects
-    df['CREATED_DATE'] = pd.to_datetime(df['CREATED_DATE'], format='%m/%d/%Y %I:%M:%S %p', errors='coerce').dt.date
-    df['CLOSED_DATE'] = pd.to_datetime(df['CLOSED_DATE'], format='%m/%d/%Y %I:%M:%S %p', errors='coerce').dt.date
+    df['CREATED_DATE'] = pd.to_datetime(df['CREATED_DATE'], format='%m/%d/%Y %I:%M:%S %p', errors='coerce')
+    df['CLOSED_DATE'] = pd.to_datetime(df['CLOSED_DATE'], format='%m/%d/%Y %I:%M:%S %p', errors='coerce')
 
     # Convert 'ZIP_CODE' to integer, handling potential NaNs by allowing nullable integer type
     # or converting NaNs first if needed. Using errors='coerce' for conversion.
