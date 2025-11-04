@@ -19,4 +19,8 @@ def display_dataframe_info(df: pd.DataFrame):
     
     print("\nModes for each column:")
     print(df.mode().iloc[0])
+
+    # Calculate and display percentage of missing values
+    print("\nPercentage of Missing Values:")
+    print((df.isnull().sum() / len(df)) * 100)
     
