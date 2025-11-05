@@ -32,3 +32,5 @@ def clean_features(df):
 
     return
   
+def dropna(df):
+  df.dropna(subset=['CREATED_DATE', 'CLOSED_DATE', 'ZIP_CODE', 'LATITUDE', 'LONGITUDE'], inplace=True)
