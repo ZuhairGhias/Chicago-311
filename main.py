@@ -23,7 +23,7 @@ from src.methods.evaluation import evaluate_with_predictions
 def load_and_prepare_data(sample_size=5000):
     # load raw data
     print("Loading data...")
-    data_path = Path("data/raw/311_Service_Requests_Since_2020.csv")
+    data_path = Path("data/raw/311_Service_Requests_2020.csv")
     df_raw = pd.read_csv(data_path)
 
     # calculate response time
