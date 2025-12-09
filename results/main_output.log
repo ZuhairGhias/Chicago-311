@@ -1,143 +1,98 @@
-/Users/karthikbaga04/Documents/University/cs412/Chicago-311/main.py:30: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
-  df_raw['CREATED_DATE'] = pd.to_datetime(df_raw['CREATED_DATE'])
 
 ======================================================================
 CHICAGO 311 SERVICE REQUEST RESPONSE TIME PREDICTION
 ======================================================================
 
 Loading data...
-Train size: 3443, Test size: 1557
+Capped at P99 (147.8 days): removed 22,000 outliers (1.0%)
+
+Temporal Split Summary:
+  Train: 1,306,776 samples (2020-01-01 to 2023-05-27)
+  Val:   435,592 samples (2023-05-27 to 2024-07-20)
+  Test:  435,592 samples (2024-07-20 to 2025-09-30)
+  Total: 2,177,960 samples
 
 ======================================================================
 RUNNING BASELINE METHODS
 ======================================================================
-Baseline_0_Global         MAE: 16.0495, RMSE: 24.8106
-Baseline_1_SR_TYPE        MAE: 14.5026, RMSE: 25.7295
-Baseline_2_ZIP            MAE: 16.7316, RMSE: 25.5918
-Baseline_3_SR_ZIP         MAE: 17.2855, RMSE: 31.2967
+Baseline_0_Global         MAE: 14.1621, RMSE: 20.2196
+Baseline_1_SR_TYPE        MAE: 12.0369, RMSE: 20.3727
+Baseline_2_ZIP            MAE: 14.1842, RMSE: 20.2262
+Baseline_3_SR_ZIP         MAE: 13.4766, RMSE: 21.1897
 
 ======================================================================
-RUNNING XGBOOST
+RUNNING XGBOOST (Time-Series CV)
 ======================================================================
-XGB_Conservative          MAE: 9.4270, RMSE: 23.9090
+Running 5-fold time-series CV...
+  Fold 1: best_iteration = 395
+  Fold 2: best_iteration = 428
+  Fold 3: best_iteration = 173
+  Fold 4: best_iteration = 798
+  Fold 5: best_iteration = 96
+  Average best iterations: 378
+XGB_Conservative          MAE: 9.9689, RMSE: 20.1048
 
 ======================================================================
 RUNNING RANDOM FOREST
 ======================================================================
-RF_Conservative           MAE: 9.5769, RMSE: 23.7649
+RF_Conservative           MAE: 9.7249, RMSE: 19.8887
 
 ======================================================================
-RUNNING LIGHTGBM ENSEMBLE
+RUNNING LIGHTGBM ENSEMBLE (Time-Series CV)
 ======================================================================
+Running 5-fold time-series CV to find optimal iterations...
 Training until validation scores don't improve for 50 rounds
-[50]	train's l1: 0.763192	valid's l1: 0.753334
-[100]	train's l1: 0.653002	valid's l1: 0.664306
-[150]	train's l1: 0.608622	valid's l1: 0.63348
-[200]	train's l1: 0.588888	valid's l1: 0.623341
-[250]	train's l1: 0.575565	valid's l1: 0.617162
-[300]	train's l1: 0.567192	valid's l1: 0.613742
-[350]	train's l1: 0.559916	valid's l1: 0.611495
-[400]	train's l1: 0.554067	valid's l1: 0.610476
-[450]	train's l1: 0.54854	valid's l1: 0.608209
-[500]	train's l1: 0.543908	valid's l1: 0.606652
-[550]	train's l1: 0.539835	valid's l1: 0.60569
-[600]	train's l1: 0.535963	valid's l1: 0.604444
-[650]	train's l1: 0.531998	valid's l1: 0.603684
-[700]	train's l1: 0.52841	valid's l1: 0.602663
-[750]	train's l1: 0.525042	valid's l1: 0.602685
+[50]	train's l1: 0.498529	valid's l1: 0.620403
+[100]	train's l1: 0.421794	valid's l1: 0.526525
+[150]	train's l1: 0.409107	valid's l1: 0.513606
+[200]	train's l1: 0.405685	valid's l1: 0.512537
 Early stopping, best iteration is:
-[725]	train's l1: 0.526886	valid's l1: 0.602251
+[191]	train's l1: 0.406038	valid's l1: 0.512351
+  Fold 1: best_iteration = 191
 Training until validation scores don't improve for 50 rounds
-[50]	train's l1: 0.753937	valid's l1: 0.743214
-[100]	train's l1: 0.636788	valid's l1: 0.646894
-[150]	train's l1: 0.598959	valid's l1: 0.623048
-[200]	train's l1: 0.583766	valid's l1: 0.615478
-[250]	train's l1: 0.574138	valid's l1: 0.611018
-[300]	train's l1: 0.566222	valid's l1: 0.608452
-[350]	train's l1: 0.559514	valid's l1: 0.606097
-[400]	train's l1: 0.554149	valid's l1: 0.604308
-[450]	train's l1: 0.548485	valid's l1: 0.602886
-[500]	train's l1: 0.543311	valid's l1: 0.601374
-[550]	train's l1: 0.539255	valid's l1: 0.600743
-[600]	train's l1: 0.535061	valid's l1: 0.599633
-[650]	train's l1: 0.531558	valid's l1: 0.59923
-[700]	train's l1: 0.528172	valid's l1: 0.598513
-[750]	train's l1: 0.525125	valid's l1: 0.598449
-[800]	train's l1: 0.522232	valid's l1: 0.598361
-[850]	train's l1: 0.519435	valid's l1: 0.598028
-[900]	train's l1: 0.516644	valid's l1: 0.597491
-[950]	train's l1: 0.514313	valid's l1: 0.596888
-[1000]	train's l1: 0.512217	valid's l1: 0.596559
-Did not meet early stopping. Best iteration is:
-[989]	train's l1: 0.512603	valid's l1: 0.59648
-Training until validation scores don't improve for 50 rounds
-[50]	train's l1: 0.760111	valid's l1: 0.751254
-[100]	train's l1: 0.64154	valid's l1: 0.651893
-[150]	train's l1: 0.601046	valid's l1: 0.62755
-[200]	train's l1: 0.583354	valid's l1: 0.618856
-[250]	train's l1: 0.572995	valid's l1: 0.615036
-[300]	train's l1: 0.564708	valid's l1: 0.613124
-[350]	train's l1: 0.558261	valid's l1: 0.610613
-[400]	train's l1: 0.55204	valid's l1: 0.609755
-[450]	train's l1: 0.546649	valid's l1: 0.608252
-[500]	train's l1: 0.54235	valid's l1: 0.606565
-[550]	train's l1: 0.538607	valid's l1: 0.605342
-[600]	train's l1: 0.534777	valid's l1: 0.604611
-[650]	train's l1: 0.531521	valid's l1: 0.603865
-[700]	train's l1: 0.528077	valid's l1: 0.603259
-[750]	train's l1: 0.525516	valid's l1: 0.602546
-[800]	train's l1: 0.523064	valid's l1: 0.602271
+[50]	train's l1: 0.50315	valid's l1: 0.750005
+[100]	train's l1: 0.413556	valid's l1: 0.691016
+[150]	train's l1: 0.397346	valid's l1: 0.683137
+[200]	train's l1: 0.392108	valid's l1: 0.684726
 Early stopping, best iteration is:
-[795]	train's l1: 0.523317	valid's l1: 0.6022
+[163]	train's l1: 0.395226	valid's l1: 0.682701
+  Fold 2: best_iteration = 163
 Training until validation scores don't improve for 50 rounds
-[50]	train's l1: 0.765124	valid's l1: 0.760557
-[100]	train's l1: 0.649778	valid's l1: 0.664927
-[150]	train's l1: 0.604681	valid's l1: 0.631879
-[200]	train's l1: 0.586801	valid's l1: 0.620993
-[250]	train's l1: 0.575228	valid's l1: 0.615534
-[300]	train's l1: 0.566067	valid's l1: 0.611847
-[350]	train's l1: 0.558699	valid's l1: 0.609847
-[400]	train's l1: 0.55295	valid's l1: 0.608641
-[450]	train's l1: 0.547576	valid's l1: 0.606505
-[500]	train's l1: 0.542923	valid's l1: 0.605763
-[550]	train's l1: 0.538544	valid's l1: 0.605531
-[600]	train's l1: 0.534855	valid's l1: 0.604915
-[650]	train's l1: 0.531349	valid's l1: 0.604169
-[700]	train's l1: 0.528538	valid's l1: 0.603452
-[750]	train's l1: 0.525241	valid's l1: 0.602569
-[800]	train's l1: 0.522331	valid's l1: 0.602066
-[850]	train's l1: 0.520013	valid's l1: 0.601957
+[50]	train's l1: 0.558363	valid's l1: 0.697899
+[100]	train's l1: 0.479218	valid's l1: 0.664125
 Early stopping, best iteration is:
-[835]	train's l1: 0.520656	valid's l1: 0.601912
+[93]	train's l1: 0.483557	valid's l1: 0.663265
+  Fold 3: best_iteration = 93
 Training until validation scores don't improve for 50 rounds
-[50]	train's l1: 0.754984	valid's l1: 0.740605
-[100]	train's l1: 0.636696	valid's l1: 0.643906
-[150]	train's l1: 0.600713	valid's l1: 0.621486
-[200]	train's l1: 0.584271	valid's l1: 0.6131
-[250]	train's l1: 0.573525	valid's l1: 0.610149
-[300]	train's l1: 0.565526	valid's l1: 0.608445
-[350]	train's l1: 0.558275	valid's l1: 0.605944
-[400]	train's l1: 0.55241	valid's l1: 0.605254
-[450]	train's l1: 0.546959	valid's l1: 0.603623
-[500]	train's l1: 0.54259	valid's l1: 0.602249
-[550]	train's l1: 0.538603	valid's l1: 0.601337
-[600]	train's l1: 0.535084	valid's l1: 0.600432
-[650]	train's l1: 0.531784	valid's l1: 0.599846
-[700]	train's l1: 0.528817	valid's l1: 0.598367
-[750]	train's l1: 0.525801	valid's l1: 0.597699
-[800]	train's l1: 0.523491	valid's l1: 0.59734
-[850]	train's l1: 0.521201	valid's l1: 0.596765
-[900]	train's l1: 0.519063	valid's l1: 0.59661
-[950]	train's l1: 0.516708	valid's l1: 0.596173
-[1000]	train's l1: 0.514598	valid's l1: 0.595393
-Did not meet early stopping. Best iteration is:
-[996]	train's l1: 0.514744	valid's l1: 0.595362
-LightGBM_Ensemble         MAE: 10.4363, RMSE: 24.4914
+[50]	train's l1: 0.588627	valid's l1: 0.732687
+[100]	train's l1: 0.513559	valid's l1: 0.692545
+[150]	train's l1: 0.50112	valid's l1: 0.687574
+[200]	train's l1: 0.498285	valid's l1: 0.686496
+[250]	train's l1: 0.497821	valid's l1: 0.686229
+[300]	train's l1: 0.497716	valid's l1: 0.686104
+[350]	train's l1: 0.496975	valid's l1: 0.686149
+[400]	train's l1: 0.495023	valid's l1: 0.685698
+[450]	train's l1: 0.493882	valid's l1: 0.68549
+[500]	train's l1: 0.492666	valid's l1: 0.685241
+[550]	train's l1: 0.491969	valid's l1: 0.685076
+[600]	train's l1: 0.491196	valid's l1: 0.68512
+Early stopping, best iteration is:
+[573]	train's l1: 0.491628	valid's l1: 0.685045
+  Fold 4: best_iteration = 573
+Training until validation scores don't improve for 50 rounds
+[50]	train's l1: 0.618762	valid's l1: 0.642222
+[100]	train's l1: 0.547157	valid's l1: 0.636143
+Early stopping, best iteration is:
+[73]	train's l1: 0.569635	valid's l1: 0.63456
+  Fold 5: best_iteration = 73
+  Average best iterations: 218
+Training 5-model ensemble with 218 iterations...
+LightGBM_Ensemble         MAE: 9.8877, RMSE: 19.9947
 
 ======================================================================
 CREATING VISUALIZATION
 ======================================================================
-✓ Visualization saved: final_model_comparison_best.png
+Visualization saved: results/final_model_comparison_best.png
 
 ======================================================================
 FINAL SUMMARY
@@ -145,22 +100,22 @@ FINAL SUMMARY
 
 Model                     MAE (days)      RMSE (days)     R²          
 ----------------------------------------------------------------------
-XGB_Conservative          9.4270          23.9090         0.034328    
-RF_Conservative           9.5769          23.7649         0.045934    
-LightGBM_Ensemble         10.4363         24.4914         -0.013293   
-Baseline_1_SR_TYPE        14.5026         25.7295         -0.118336   
-Baseline_0_Global         16.0495         24.8106         -0.039877   
-Baseline_2_ZIP            16.7316         25.5918         -0.106390   
-Baseline_3_SR_ZIP         17.2855         31.2967         -0.654651   
+RF_Conservative           9.7249          19.8887         0.004772    
+LightGBM_Ensemble         9.8877          19.9947         -0.005861   
+XGB_Conservative          9.9689          20.1048         -0.016968   
+Baseline_1_SR_TYPE        12.0369         20.3727         -0.044253   
+Baseline_3_SR_ZIP         13.4766         21.1897         -0.129693   
+Baseline_0_Global         14.1621         20.2196         -0.028621   
+Baseline_2_ZIP            14.1842         20.2262         -0.029288   
 ----------------------------------------------------------------------
 
-★ Best Model: XGB_Conservative
-  MAE: 9.4270 days
-  RMSE: 23.9090 days
-  Improvement over best baseline: 35.0%
+Best Model: RF_Conservative
+  MAE: 9.7249 days
+  RMSE: 19.8887 days
+  Improvement over best baseline: 19.2%
 
 ======================================================================
 
-✓ Results saved to model_results.csv
-✓ All done!
+Results saved to results/model_results.csv
+All done!
 
