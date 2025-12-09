@@ -306,7 +306,7 @@ def main():
 
     # load data with temporal split
     data_path = Path(__file__).parent.parent / "data/raw/311_Service_Requests_2020.csv"
-    train_df, val_df, test_df = load_and_split_data(data_path=data_path, sample_size=5000, use_validation=True)
+    train_df, val_df, test_df = load_and_split_data(data_path=data_path, sample_size=None, use_validation=True)
 
     categorical_cols = ['SR_TYPE', 'ZIP_CODE', 'ORIGIN']
     numeric_cols = ['CREATED_HOUR', 'CREATED_DAY_OF_WEEK', 'CREATED_MONTH']
