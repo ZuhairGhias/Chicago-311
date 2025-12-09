@@ -2,3 +2,5 @@ __pycache__/
 *.py[cod]
 .venv/
 .ipynb_checkpoints/
+311_Service_Requests_Since_2020.csv
+chicago_weather_2020.csv

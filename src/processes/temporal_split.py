@@ -13,8 +13,8 @@ def load_and_preprocess_data(data_path, sample_size=None, cap_at_p99=True):
     print("Loading data...")
     df_raw = pd.read_csv(data_path)
 
-    df_raw['CREATED_DATE'] = pd.to_datetime(df_raw['CREATED_DATE'])
-    df_raw['CLOSED_DATE'] = pd.to_datetime(df_raw['CLOSED_DATE'])
+    df_raw['CREATED_DATE'] = pd.to_datetime(df_raw['CREATED_DATE'], format='%m/%d/%Y %I:%M:%S %p')
+    df_raw['CLOSED_DATE'] = pd.to_datetime(df_raw['CLOSED_DATE'], format='%m/%d/%Y %I:%M:%S %p')
     df_raw['RESPONSE_TIME'] = df_raw['CLOSED_DATE'] - df_raw['CREATED_DATE']
     df_raw['RESPONSE_TIME_DAYS'] = df_raw['RESPONSE_TIME'].dt.total_seconds() / 86400
 

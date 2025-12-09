@@ -54,14 +54,14 @@ def encode_test_features_xgb(X_test, categorical_cols, label_encoders):
     return X_test_encoded
 
 
-def train_xgboost_model(X_train, y_train, X_val, y_val, params):
+def train_xgboost_model(X_train, y_train, X_val, y_val, params, early_stopping_rounds=50):
     # train xgboost model with early stopping
-    n_estimators = params.pop('n_estimators', 500)
+    params = params.copy()  # avoid modifying original
 
-    model = xgb.XGBRegressor(**params)
+    model = xgb.XGBRegressor(**params, early_stopping_rounds=early_stopping_rounds)
     model.fit(
         X_train, y_train,
-        eval_set=[(X_train, y_train), (X_val, y_val)],
+        eval_set=[(X_val, y_val)],
         verbose=False
     )
 
