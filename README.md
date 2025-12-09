@@ -42,11 +42,23 @@ python scripts/eda.py
 ```
 Generates correlation heatmaps, temporal trends, spatial distribution, and target distribution plots.
 
-**Run main models:**
+**Run main models (base features only):**
 ```bash
 python main.py
 ```
 Trains all models (baseline, XGBoost, Random Forest, LightGBM) and generates comparison visualizations.
+
+**Run weather data augmentation:**
+```bash
+python scripts/data_augmentation.py
+```
+Fetches historical weather data and adds 7 weather features (temp, precipitation, snowfall, etc.) to the dataset.
+
+**Run models with weather features:**
+```bash
+python main_weather_augmented.py
+```
+Trains models with weather-augmented dataset to compare performance impact.
 
 **Run variance analysis and SHAP interpretability:**
 ```bash
@@ -58,31 +70,34 @@ Runs each model 10 times with different seeds, performs t-tests, and generates S
 
 ```
 Chicago-311/
-├── main.py                  # Main entry point - runs all models
-├── requirements.txt         # Python dependencies
-├── scripts/                 # Analysis scripts
-│   ├── eda.py              # Exploratory data analysis
-│   └── variance_analysis.py # Variance testing and SHAP analysis
+├── main.py                      # Main entry point - runs all models
+├── main_weather_augmented.py    # Runs models with weather features
+├── requirements.txt             # Python dependencies
+├── scripts/                     # Analysis scripts
+│   ├── eda.py                  # Exploratory data analysis
+│   ├── data_augmentation.py    # Weather data augmentation
+│   └── variance_analysis.py    # Variance testing and SHAP analysis
 ├── data/
-│   └── raw/                 # Place data here (gitignored)
-├── results/                 # Model outputs and visualizations
-│   ├── eda/                # EDA visualizations
-│   ├── interpretability/   # SHAP plots and variance analysis
-│   ├── *.csv               # Performance metrics
-│   └── *.png               # Comparison plots
+│   ├── raw/                     # Place data here (gitignored)
+│   └── processed/               # Weather-augmented datasets
+├── results/                     # Model outputs and visualizations
+│   ├── eda/                    # EDA visualizations
+│   ├── interpretability/       # SHAP plots and variance analysis
+│   ├── *.csv                   # Performance metrics
+│   └── *.png                   # Comparison plots
 ├── src/
-│   ├── methods/            # Model implementations
-│   │   ├── baseline.py     # Historical average baselines
+│   ├── methods/                # Model implementations
+│   │   ├── baseline.py         # Historical average baselines
 │   │   ├── xgboost_model.py
 │   │   ├── random_forest_model.py
 │   │   └── lightgbm_model.py
-│   ├── visualizations/     # Visualization modules
-│   │   ├── eda.py          # EDA plotting functions
+│   ├── visualizations/         # Visualization modules
+│   │   ├── eda.py              # EDA plotting functions
 │   │   └── interpretability.py # SHAP and feature importance
-│   ├── processes/          # Data processing utilities
-│   └── config.py           # Project configuration
-├── notebooks/              # Jupyter notebooks for exploration
-└── tests/                  # Unit tests
+│   ├── processes/              # Data processing utilities
+│   └── config.py               # Project configuration
+├── notebooks/                  # Jupyter notebooks for exploration
+└── tests/                      # Unit tests
 ```
 
 ## Models Implemented
