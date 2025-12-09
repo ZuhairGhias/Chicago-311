@@ -109,11 +109,7 @@ Chicago-311/
 
 ## Results
 
-All models significantly outperform baseline methods using temporal train-test split with response times capped at 99th percentile (147.8 days) to remove outliers:
-- **XGBoost**: 9.36 days MAE, 20.22 RMSE (25% improvement over baseline)
-- **Random Forest**: 9.37 days MAE, 19.93 RMSE (25% improvement)
-- **LightGBM**: 9.45 days MAE, 20.21 RMSE (24% improvement)
-- **Best Baseline**: 12.48 days MAE (by service type)
+![results](results/final_model_comparison_best.png "Results")
 
 Models use proper temporal validation (train on past data, predict future requests) to ensure realistic performance estimates.
 
