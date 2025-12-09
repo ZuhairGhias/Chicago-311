@@ -107,6 +107,13 @@ Chicago-311/
 3. **Random Forest** - Ensemble decision trees
 4. **LightGBM** - Fast gradient boosting framework
 
+## Results
+
+All models significantly outperform baseline methods using temporal train-test split with response times capped at 99th percentile (147.8 days) to remove outliers.
+![results](results/final_model_comparison_best.png "Results")
+
+See `results/` directory for detailed metrics and visualizations.
+
 ## Development
 
 ### Adding New Models
