@@ -3,13 +3,18 @@ Variance Analysis and Statistical Testing
 Runs models multiple times with different seeds and performs t-tests
 """
 
+import sys
+from pathlib import Path
+
+# add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from pathlib import Path
 from scipy.stats import ttest_ind
 
+from src.processes.temporal_split import load_and_split_data
 from src.methods.xgboost_model import (
     prepare_features_xgb, train_xgboost_model,
     predict_xgboost, encode_test_features_xgb
@@ -25,32 +30,7 @@ from src.methods.evaluation import evaluate_with_predictions
 from src.visualizations.interpretability import plot_shap_analysis, plot_feature_importance_comparison
 
 
-def load_and_prepare_data(sample_size=5000):
-    # load and prepare data
-    print("Loading data...")
-    data_path = Path("data/raw/311_Service_Requests_2020.csv")
-    df_raw = pd.read_csv(data_path)
-
-    df_raw['CREATED_DATE'] = pd.to_datetime(df_raw['CREATED_DATE'])
-    df_raw['CLOSED_DATE'] = pd.to_datetime(df_raw['CLOSED_DATE'])
-    df_raw['RESPONSE_TIME'] = df_raw['CLOSED_DATE'] - df_raw['CREATED_DATE']
-    df_raw['RESPONSE_TIME_DAYS'] = df_raw['RESPONSE_TIME'].dt.total_seconds() / 86400
-
-    cols = ["SR_TYPE", "ORIGIN", "CREATED_DATE", "CLOSED_DATE", "ZIP_CODE",
-            "CREATED_HOUR", "CREATED_DAY_OF_WEEK", "CREATED_MONTH", "RESPONSE_TIME_DAYS"]
-    df = df_raw[cols].copy().dropna(subset=['RESPONSE_TIME_DAYS'])
-
-    np.random.seed(42)
-    df_sample = df.sample(n=sample_size, random_state=42).copy()
-
-    cutoff_date = pd.Timestamp('2024-01-01')
-    train_df = df_sample[df_sample['CREATED_DATE'] < cutoff_date].copy()
-    test_df = df_sample[df_sample['CREATED_DATE'] >= cutoff_date].copy()
-
-    return train_df, test_df
-
-
-def run_xgboost_trials(train_df, test_df, seeds, categorical_cols, numeric_cols, target_col):
+def run_xgboost_trials(train_df, val_df, test_df, seeds, categorical_cols, numeric_cols, target_col):
     # run xgboost with multiple seeds
     print("\nRunning XGBoost trials...")
     results = []
@@ -75,18 +55,15 @@ def run_xgboost_trials(train_df, test_df, seeds, categorical_cols, numeric_cols,
     for i, seed in enumerate(seeds, 1):
         print(f"  Trial {i}/{len(seeds)} (seed={seed})...")
 
-        # split with current seed
-        train_data, val_data = train_test_split(train_df, test_size=0.2, random_state=seed)
-
-        y_train = train_data[target_col].values
-        y_val = val_data[target_col].values
+        y_train = train_df[target_col].values
+        y_val = val_df[target_col].values
         y_test = test_df[target_col].values
         y_train_log = np.log1p(y_train)
         y_val_log = np.log1p(y_val)
 
         # prepare and train
-        X_train, encoders = prepare_features_xgb(train_data, categorical_cols, numeric_cols)
-        X_val, _ = prepare_features_xgb(val_data, categorical_cols, numeric_cols)
+        X_train, encoders = prepare_features_xgb(train_df, categorical_cols, numeric_cols)
+        X_val, _ = prepare_features_xgb(val_df, categorical_cols, numeric_cols)
         X_test = encode_test_features_xgb(test_df[categorical_cols + numeric_cols],
                                           categorical_cols, encoders)
 
@@ -128,14 +105,12 @@ def run_random_forest_trials(train_df, test_df, seeds, categorical_cols, numeric
     for i, seed in enumerate(seeds, 1):
         print(f"  Trial {i}/{len(seeds)} (seed={seed})...")
 
-        train_data, _ = train_test_split(train_df, test_size=0.2, random_state=seed)
-
-        y_train = train_data[target_col].values
+        y_train = train_df[target_col].values
         y_test = test_df[target_col].values
         y_train_log = np.log1p(y_train)
 
         # prepare and train
-        X_train, encoders = prepare_features_rf(train_data, categorical_cols, numeric_cols)
+        X_train, encoders = prepare_features_rf(train_df, categorical_cols, numeric_cols)
         X_test = encode_test_features(test_df[categorical_cols + numeric_cols],
                                       categorical_cols, encoders)
 
@@ -157,7 +132,7 @@ def run_random_forest_trials(train_df, test_df, seeds, categorical_cols, numeric
     return results, saved_model, saved_X_test
 
 
-def run_lightgbm_trials(train_df, test_df, seeds, categorical_cols, numeric_cols, target_col):
+def run_lightgbm_trials(train_df, val_df, test_df, seeds, categorical_cols, numeric_cols, target_col):
     # run lightgbm with multiple seeds
     print("\nRunning LightGBM trials...")
     results = []
@@ -181,17 +156,15 @@ def run_lightgbm_trials(train_df, test_df, seeds, categorical_cols, numeric_cols
     for i, seed in enumerate(seeds, 1):
         print(f"  Trial {i}/{len(seeds)} (seed={seed})...")
 
-        train_data, val_data = train_test_split(train_df, test_size=0.2, random_state=seed)
-
-        y_train = train_data[target_col].values
-        y_val = val_data[target_col].values
+        y_train = train_df[target_col].values
+        y_val = val_df[target_col].values
         y_test = test_df[target_col].values
         y_train_log = np.log1p(y_train)
         y_val_log = np.log1p(y_val)
 
         # prepare and train
-        X_train = prepare_features(train_data, categorical_cols, numeric_cols)
-        X_val = prepare_features(val_data, categorical_cols, numeric_cols)
+        X_train = prepare_features(train_df, categorical_cols, numeric_cols)
+        X_val = prepare_features(val_df, categorical_cols, numeric_cols)
         X_test = prepare_features(test_df, categorical_cols, numeric_cols)
 
         params['random_state'] = seed
@@ -331,8 +304,9 @@ def main():
     print("MODEL VARIANCE ANALYSIS AND STATISTICAL TESTING")
     print("="*70)
 
-    # load data
-    train_df, test_df = load_and_prepare_data(sample_size=5000)
+    # load data with temporal split
+    data_path = Path(__file__).parent.parent / "data/raw/311_Service_Requests_2020.csv"
+    train_df, val_df, test_df = load_and_split_data(data_path=data_path, sample_size=5000, use_validation=True)
 
     categorical_cols = ['SR_TYPE', 'ZIP_CODE', 'ORIGIN']
     numeric_cols = ['CREATED_HOUR', 'CREATED_DAY_OF_WEEK', 'CREATED_MONTH']
@@ -348,7 +322,7 @@ def main():
     models_dict = {}
     X_test_dict = {}
 
-    xgb_results, xgb_model, xgb_X_test = run_xgboost_trials(train_df, test_df, seeds,
+    xgb_results, xgb_model, xgb_X_test = run_xgboost_trials(train_df, val_df, test_df, seeds,
                                                              categorical_cols, numeric_cols, target_col)
     results_dict['XGBoost'] = xgb_results
     models_dict['XGBoost'] = xgb_model
@@ -360,7 +334,7 @@ def main():
     models_dict['Random Forest'] = rf_model
     X_test_dict['Random Forest'] = rf_X_test
 
-    lgb_results, lgb_model, lgb_X_test = run_lightgbm_trials(train_df, test_df, seeds,
+    lgb_results, lgb_model, lgb_X_test = run_lightgbm_trials(train_df, val_df, test_df, seeds,
                                                               categorical_cols, numeric_cols, target_col)
     results_dict['LightGBM'] = lgb_results
     models_dict['LightGBM'] = lgb_model

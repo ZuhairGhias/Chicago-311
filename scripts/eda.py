@@ -3,9 +3,14 @@ Exploratory Data Analysis Script
 Run this before modeling to generate EDA visualizations
 """
 
+import sys
+from pathlib import Path
+
+# add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import pandas as pd
 import numpy as np
-from pathlib import Path
 from sklearn.preprocessing import LabelEncoder
 
 from src.visualizations.eda import (
@@ -23,7 +28,7 @@ def main():
 
     # load data
     print("\nLoading data...")
-    data_path = Path("data/raw/311_Service_Requests_2020.csv")
+    data_path = Path(__file__).parent.parent / "data/raw/311_Service_Requests_2020.csv"
     df_raw = pd.read_csv(data_path)
 
     # calculate response time

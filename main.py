@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
 from pathlib import Path
+
+# import preprocessing
+from src.processes.temporal_split import load_and_split_data
 
 # import model functions
 from src.methods.baseline import get_all_prior_year_average
@@ -20,36 +22,6 @@ from src.methods.lightgbm_model import (
 from src.methods.evaluation import evaluate_with_predictions
 
 
-def load_and_prepare_data(sample_size=5000):
-    # load raw data
-    print("Loading data...")
-    data_path = Path("data/raw/311_Service_Requests_2020.csv")
-    df_raw = pd.read_csv(data_path)
-
-    # calculate response time
-    df_raw['CREATED_DATE'] = pd.to_datetime(df_raw['CREATED_DATE'])
-    df_raw['CLOSED_DATE'] = pd.to_datetime(df_raw['CLOSED_DATE'])
-    df_raw['RESPONSE_TIME'] = df_raw['CLOSED_DATE'] - df_raw['CREATED_DATE']
-    df_raw['RESPONSE_TIME_DAYS'] = df_raw['RESPONSE_TIME'].dt.total_seconds() / 86400
-
-    # select columns
-    cols_to_keep = ["SR_TYPE", "ORIGIN", "CREATED_DATE", "CLOSED_DATE", "ZIP_CODE",
-                    "CREATED_HOUR", "CREATED_DAY_OF_WEEK", "CREATED_MONTH", "RESPONSE_TIME_DAYS"]
-    df = df_raw[cols_to_keep].copy()
-    df = df.dropna(subset=['RESPONSE_TIME_DAYS'])
-
-    # sample data
-    np.random.seed(42)
-    df_sample = df.sample(n=sample_size, random_state=42).copy()
-
-    # temporal split
-    cutoff_date = pd.Timestamp('2024-01-01')
-    train_df = df_sample[df_sample['CREATED_DATE'] < cutoff_date].copy()
-    test_df = df_sample[df_sample['CREATED_DATE'] >= cutoff_date].copy()
-
-    print(f"Train size: {len(train_df)}, Test size: {len(test_df)}\n")
-
-    return train_df, test_df
 
 
 def run_baseline_methods(train_df, test_df, y_test):
@@ -156,14 +128,14 @@ def run_lightgbm_ensemble(train_data, val_data, test_df, y_train_log, y_val_log,
     params = {
         'objective': 'mae',
         'metric': 'mae',
-        'num_leaves': 31,
-        'max_depth': 8,
-        'learning_rate': 0.03,
-        'feature_fraction': 0.7,
-        'bagging_fraction': 0.7,
-        'min_data_in_leaf': 100,
-        'lambda_l1': 0.5,
-        'lambda_l2': 0.5,
+        'num_leaves': 45,
+        'max_depth': 9,
+        'learning_rate': 0.04,
+        'feature_fraction': 0.75,
+        'bagging_fraction': 0.75,
+        'min_data_in_leaf': 40,
+        'lambda_l1': 0.2,
+        'lambda_l2': 0.2,
         'verbose': -1
     }
 
@@ -296,20 +268,17 @@ def main():
     print("CHICAGO 311 SERVICE REQUEST RESPONSE TIME PREDICTION")
     print("="*70 + "\n")
 
-    # load data
-    train_df, test_df = load_and_prepare_data(sample_size=5000)
+    # load data with temporal split
+    train_df, val_df, test_df = load_and_split_data(sample_size=5000, use_validation=True)
 
     # define features
     categorical_cols = ['SR_TYPE', 'ZIP_CODE', 'ORIGIN']
     numeric_cols = ['CREATED_HOUR', 'CREATED_DAY_OF_WEEK', 'CREATED_MONTH']
     target_col = 'RESPONSE_TIME_DAYS'
 
-    # split training data
-    train_data, val_data = train_test_split(train_df, test_size=0.2, random_state=42)
-
     # prepare targets
-    y_train = train_data[target_col].values
-    y_val = val_data[target_col].values
+    y_train = train_df[target_col].values
+    y_val = val_df[target_col].values
     y_test = test_df[target_col].values
     y_train_log = np.log1p(y_train)
     y_val_log = np.log1p(y_val)
@@ -320,15 +289,15 @@ def main():
     baseline_results = run_baseline_methods(train_df, test_df, y_test)
     all_results.extend(baseline_results)
 
-    xgb_result = run_xgboost(train_data, val_data, test_df, y_train_log, y_val_log,
+    xgb_result = run_xgboost(train_df, val_df, test_df, y_train_log, y_val_log,
                              y_test, categorical_cols, numeric_cols)
     all_results.append(xgb_result)
 
-    rf_result = run_random_forest(train_data, test_df, y_train_log, y_test,
+    rf_result = run_random_forest(train_df, test_df, y_train_log, y_test,
                                    categorical_cols, numeric_cols)
     all_results.append(rf_result)
 
-    lgb_result = run_lightgbm_ensemble(train_data, val_data, test_df, y_train_log,
+    lgb_result = run_lightgbm_ensemble(train_df, val_df, test_df, y_train_log,
                                        y_val_log, y_test, categorical_cols, numeric_cols)
     all_results.append(lgb_result)
 

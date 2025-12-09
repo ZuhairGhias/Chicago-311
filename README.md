@@ -34,15 +34,25 @@ data/raw/311_Service_Requests_Since_2020.csv
 
 Data source: [Chicago Data Portal](https://data.cityofchicago.org/Service-Requests/311-Service-Requests/v6vf-nfxy)
 
-### 4. Run the Models
+### 4. Run Analysis Scripts
+
+**Run EDA (Exploratory Data Analysis):**
+```bash
+python scripts/eda.py
+```
+Generates correlation heatmaps, temporal trends, spatial distribution, and target distribution plots.
+
+**Run main models:**
 ```bash
 python main.py
 ```
+Trains all models (baseline, XGBoost, Random Forest, LightGBM) and generates comparison visualizations.
 
-This will:
-- Train all models (baseline, XGBoost, Random Forest, LightGBM)
-- Generate comparison visualizations
-- Save results to `results/` directory
+**Run variance analysis and SHAP interpretability:**
+```bash
+python scripts/variance_analysis.py
+```
+Runs each model 10 times with different seeds, performs t-tests, and generates SHAP analysis plots.
 
 ## Project Structure
 
@@ -50,9 +60,14 @@ This will:
 Chicago-311/
 ├── main.py                  # Main entry point - runs all models
 ├── requirements.txt         # Python dependencies
+├── scripts/                 # Analysis scripts
+│   ├── eda.py              # Exploratory data analysis
+│   └── variance_analysis.py # Variance testing and SHAP analysis
 ├── data/
 │   └── raw/                 # Place data here (gitignored)
 ├── results/                 # Model outputs and visualizations
+│   ├── eda/                # EDA visualizations
+│   ├── interpretability/   # SHAP plots and variance analysis
 │   ├── *.csv               # Performance metrics
 │   └── *.png               # Comparison plots
 ├── src/
@@ -61,6 +76,9 @@ Chicago-311/
 │   │   ├── xgboost_model.py
 │   │   ├── random_forest_model.py
 │   │   └── lightgbm_model.py
+│   ├── visualizations/     # Visualization modules
+│   │   ├── eda.py          # EDA plotting functions
+│   │   └── interpretability.py # SHAP and feature importance
 │   ├── processes/          # Data processing utilities
 │   └── config.py           # Project configuration
 ├── notebooks/              # Jupyter notebooks for exploration
@@ -76,11 +94,13 @@ Chicago-311/
 
 ## Results
 
-All models significantly outperform baseline methods:
-- **XGBoost**: 9.43 days MAE (35% improvement over baseline)
-- **Random Forest**: 9.58 days MAE (34% improvement)
-- **LightGBM**: 10.31 days MAE (29% improvement)
-- **Baseline**: 14.50 days MAE
+All models significantly outperform baseline methods using temporal train-test split with response times capped at 99th percentile (147.8 days) to remove outliers:
+- **XGBoost**: 9.36 days MAE, 20.22 RMSE (25% improvement over baseline)
+- **Random Forest**: 9.37 days MAE, 19.93 RMSE (25% improvement)
+- **LightGBM**: 9.45 days MAE, 20.21 RMSE (24% improvement)
+- **Best Baseline**: 12.48 days MAE (by service type)
+
+Models use proper temporal validation (train on past data, predict future requests) to ensure realistic performance estimates.
 
 See `results/` directory for detailed metrics and visualizations.
 
