@@ -117,11 +117,6 @@ See `results/` directory for detailed metrics and visualizations.
 
 ## Development
 
-### Running Tests
-```bash
-pytest tests/
-```
-
 ### Adding New Models
 1. Create model file in `src/methods/`
 2. Implement training and prediction functions
