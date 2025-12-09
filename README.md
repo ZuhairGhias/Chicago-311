@@ -107,6 +107,14 @@ Chicago-311/
 3. **Random Forest** - Ensemble decision trees
 4. **LightGBM** - Fast gradient boosting framework
 
+## Results
+
+![results](results/final_model_comparison_best.png "Results")
+
+Models use proper temporal validation (train on past data, predict future requests) to ensure realistic performance estimates.
+
+See `results/` directory for detailed metrics and visualizations.
+
 ## Development
 
 ### Adding New Models
