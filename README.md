@@ -6,7 +6,7 @@ Machine learning models to predict Chicago 311 service request response times us
 
 ### 1. Clone and Setup
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/ZuhairGhias/Chicago-311.git
 cd Chicago-311
 ```
 
