@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import TimeSeriesSplit
 from pathlib import Path
 
 # import model functions
@@ -20,15 +20,25 @@ from src.methods.lightgbm_model import (
 from src.methods.evaluation import evaluate_with_predictions
 
 
+def get_ts_cv_splits(df, n_splits=5):
+    """Get time-series cross-validation splits.
+
+    Returns list of (train_idx, val_idx) tuples for temporal CV.
+    Data must be sorted by date before calling.
+    """
+    tscv = TimeSeriesSplit(n_splits=n_splits)
+    return list(tscv.split(df))
+
+
 def load_and_prepare_data(sample_size=5000):
     # load raw data
     print("Loading data...")
-    data_path = Path("data/raw/311_Service_Requests_2020.csv")
+    data_path = Path("data/raw/311_Service_Requests_Since_2020.csv")
     df_raw = pd.read_csv(data_path)
 
     # calculate response time
-    df_raw['CREATED_DATE'] = pd.to_datetime(df_raw['CREATED_DATE'])
-    df_raw['CLOSED_DATE'] = pd.to_datetime(df_raw['CLOSED_DATE'])
+    df_raw['CREATED_DATE'] = pd.to_datetime(df_raw['CREATED_DATE'], format='%m/%d/%Y %I:%M:%S %p')
+    df_raw['CLOSED_DATE'] = pd.to_datetime(df_raw['CLOSED_DATE'], format='%m/%d/%Y %I:%M:%S %p')
     df_raw['RESPONSE_TIME'] = df_raw['CLOSED_DATE'] - df_raw['CREATED_DATE']
     df_raw['RESPONSE_TIME_DAYS'] = df_raw['RESPONSE_TIME'].dt.total_seconds() / 86400
 
@@ -46,6 +56,9 @@ def load_and_prepare_data(sample_size=5000):
     cutoff_date = pd.Timestamp('2024-01-01')
     train_df = df_sample[df_sample['CREATED_DATE'] < cutoff_date].copy()
     test_df = df_sample[df_sample['CREATED_DATE'] >= cutoff_date].copy()
+
+    # sort training data by date for time-series CV
+    train_df = train_df.sort_values('CREATED_DATE').reset_index(drop=True)
 
     print(f"Train size: {len(train_df)}, Test size: {len(test_df)}\n")
 
@@ -76,11 +89,10 @@ def run_baseline_methods(train_df, test_df, y_test):
     return baseline_results
 
 
-def run_xgboost(train_data, val_data, test_df, y_train_log, y_val_log, y_test,
-                categorical_cols, numeric_cols):
-    # run xgboost conservative configuration
+def run_xgboost(train_df, test_df, y_test, categorical_cols, numeric_cols, n_splits=5):
+    """Run XGBoost with time-series CV to find optimal iterations."""
     print("="*70)
-    print("RUNNING XGBOOST")
+    print("RUNNING XGBOOST (Time-Series CV)")
     print("="*70)
 
     params = {
@@ -99,13 +111,44 @@ def run_xgboost(train_data, val_data, test_df, y_train_log, y_val_log, y_test,
         'n_jobs': -1
     }
 
-    X_train, encoders = prepare_features_xgb(train_data, categorical_cols, numeric_cols)
-    X_val, _ = prepare_features_xgb(val_data, categorical_cols, numeric_cols)
+    target_col = 'RESPONSE_TIME_DAYS'
+    cv_splits = get_ts_cv_splits(train_df, n_splits=n_splits)
+    best_iterations = []
+
+    # CV to find optimal iterations
+    print(f"Running {n_splits}-fold time-series CV...")
+    for fold, (train_idx, val_idx) in enumerate(cv_splits):
+        fold_train = train_df.iloc[train_idx]
+        fold_val = train_df.iloc[val_idx]
+
+        X_train, encoders = prepare_features_xgb(fold_train, categorical_cols, numeric_cols)
+        X_val, _ = prepare_features_xgb(fold_val, categorical_cols, numeric_cols)
+
+        y_train_log = np.log1p(fold_train[target_col].values)
+        y_val_log = np.log1p(fold_val[target_col].values)
+
+        model = train_xgboost_model(X_train, y_train_log, X_val, y_val_log, params)
+        best_iterations.append(model.best_iteration)
+        print(f"  Fold {fold+1}: best_iteration = {model.best_iteration}")
+
+    # Train final model on full training data with averaged iterations
+    avg_iterations = int(np.mean(best_iterations))
+    print(f"  Average best iterations: {avg_iterations}")
+
+    final_params = params.copy()
+    final_params['n_estimators'] = avg_iterations
+
+    X_train_full, encoders = prepare_features_xgb(train_df, categorical_cols, numeric_cols)
+    y_train_full_log = np.log1p(train_df[target_col].values)
     X_test = encode_test_features_xgb(test_df[categorical_cols + numeric_cols],
                                        categorical_cols, encoders)
 
-    model = train_xgboost_model(X_train, y_train_log, X_val, y_val_log, params)
-    y_pred_log = predict_xgboost(model, X_test)
+    # Train without early stopping (fixed iterations)
+    from xgboost import XGBRegressor
+    final_model = XGBRegressor(**final_params)
+    final_model.fit(X_train_full, y_train_full_log)
+
+    y_pred_log = predict_xgboost(final_model, X_test)
     y_pred = np.expm1(y_pred_log)
 
     metrics = evaluate_with_predictions(y_test, y_pred, 'XGB_Conservative')
@@ -114,9 +157,8 @@ def run_xgboost(train_data, val_data, test_df, y_train_log, y_val_log, y_test,
     return metrics
 
 
-def run_random_forest(train_data, test_df, y_train_log, y_test,
-                      categorical_cols, numeric_cols):
-    # run random forest conservative configuration
+def run_random_forest(train_df, test_df, y_test, categorical_cols, numeric_cols):
+    """Run Random Forest on full training data (no early stopping needed)."""
     print("="*70)
     print("RUNNING RANDOM FOREST")
     print("="*70)
@@ -132,7 +174,10 @@ def run_random_forest(train_data, test_df, y_train_log, y_test,
         'n_jobs': -1
     }
 
-    X_train, encoders = prepare_features_rf(train_data, categorical_cols, numeric_cols)
+    target_col = 'RESPONSE_TIME_DAYS'
+    y_train_log = np.log1p(train_df[target_col].values)
+
+    X_train, encoders = prepare_features_rf(train_df, categorical_cols, numeric_cols)
     X_test = encode_test_features(test_df[categorical_cols + numeric_cols],
                                    categorical_cols, encoders)
 
@@ -146,11 +191,10 @@ def run_random_forest(train_data, test_df, y_train_log, y_test,
     return metrics
 
 
-def run_lightgbm_ensemble(train_data, val_data, test_df, y_train_log, y_val_log, y_test,
-                          categorical_cols, numeric_cols):
-    # run lightgbm ensemble (5 models with different seeds)
+def run_lightgbm_ensemble(train_df, test_df, y_test, categorical_cols, numeric_cols, n_splits=5):
+    """Run LightGBM ensemble with time-series CV to find optimal iterations."""
     print("="*70)
-    print("RUNNING LIGHTGBM ENSEMBLE")
+    print("RUNNING LIGHTGBM ENSEMBLE (Time-Series CV)")
     print("="*70)
 
     params = {
@@ -167,18 +211,46 @@ def run_lightgbm_ensemble(train_data, val_data, test_df, y_train_log, y_val_log,
         'verbose': -1
     }
 
+    target_col = 'RESPONSE_TIME_DAYS'
+    cv_splits = get_ts_cv_splits(train_df, n_splits=n_splits)
+
+    # CV to find optimal iterations
+    print(f"Running {n_splits}-fold time-series CV to find optimal iterations...")
+    best_iterations = []
+    for fold, (train_idx, val_idx) in enumerate(cv_splits):
+        fold_train = train_df.iloc[train_idx]
+        fold_val = train_df.iloc[val_idx]
+
+        X_train = prepare_features(fold_train, categorical_cols, numeric_cols)
+        X_val = prepare_features(fold_val, categorical_cols, numeric_cols)
+
+        y_train_log = np.log1p(fold_train[target_col].values)
+        y_val_log = np.log1p(fold_val[target_col].values)
+
+        params['random_state'] = 42
+        model = train_lightgbm_model(X_train, y_train_log, X_val, y_val_log, params,
+                                     num_iterations=1000, early_stopping_rounds=50)
+        best_iterations.append(model.best_iteration)
+        print(f"  Fold {fold+1}: best_iteration = {model.best_iteration}")
+
+    avg_iterations = int(np.mean(best_iterations))
+    print(f"  Average best iterations: {avg_iterations}")
+
+    # Train ensemble on full data with averaged iterations
     seeds = [42, 123, 456, 789, 1011]
     all_preds = []
 
-    for seed in seeds:
-        X_train = prepare_features(train_data, categorical_cols, numeric_cols)
-        X_val = prepare_features(val_data, categorical_cols, numeric_cols)
-        X_test = prepare_features(test_df, categorical_cols, numeric_cols)
+    print(f"Training {len(seeds)}-model ensemble with {avg_iterations} iterations...")
+    X_train_full = prepare_features(train_df, categorical_cols, numeric_cols)
+    X_test = prepare_features(test_df, categorical_cols, numeric_cols)
+    y_train_full_log = np.log1p(train_df[target_col].values)
 
+    import lightgbm as lgb
+    for seed in seeds:
         params['random_state'] = seed
-        model = train_lightgbm_model(X_train, y_train_log, X_val, y_val_log, params,
-                                     num_iterations=1000, early_stopping_rounds=50)
-        y_pred_log = predict_lightgbm(model, X_test)
+        train_data = lgb.Dataset(X_train_full, label=y_train_full_log)
+        model = lgb.train(params, train_data, num_boost_round=avg_iterations)
+        y_pred_log = model.predict(X_test)
         y_pred = np.expm1(y_pred_log)
         all_preds.append(y_pred)
 
@@ -296,7 +368,7 @@ def main():
     print("CHICAGO 311 SERVICE REQUEST RESPONSE TIME PREDICTION")
     print("="*70 + "\n")
 
-    # load data
+    # load data (train_df is sorted by date for time-series CV)
     train_df, test_df = load_and_prepare_data(sample_size=5000)
 
     # define features
@@ -304,32 +376,22 @@ def main():
     numeric_cols = ['CREATED_HOUR', 'CREATED_DAY_OF_WEEK', 'CREATED_MONTH']
     target_col = 'RESPONSE_TIME_DAYS'
 
-    # split training data
-    train_data, val_data = train_test_split(train_df, test_size=0.2, random_state=42)
-
-    # prepare targets
-    y_train = train_data[target_col].values
-    y_val = val_data[target_col].values
+    # prepare test target
     y_test = test_df[target_col].values
-    y_train_log = np.log1p(y_train)
-    y_val_log = np.log1p(y_val)
 
-    # run all models
+    # run all models (each handles its own time-series CV internally)
     all_results = []
 
     baseline_results = run_baseline_methods(train_df, test_df, y_test)
     all_results.extend(baseline_results)
 
-    xgb_result = run_xgboost(train_data, val_data, test_df, y_train_log, y_val_log,
-                             y_test, categorical_cols, numeric_cols)
+    xgb_result = run_xgboost(train_df, test_df, y_test, categorical_cols, numeric_cols)
     all_results.append(xgb_result)
 
-    rf_result = run_random_forest(train_data, test_df, y_train_log, y_test,
-                                   categorical_cols, numeric_cols)
+    rf_result = run_random_forest(train_df, test_df, y_test, categorical_cols, numeric_cols)
     all_results.append(rf_result)
 
-    lgb_result = run_lightgbm_ensemble(train_data, val_data, test_df, y_train_log,
-                                       y_val_log, y_test, categorical_cols, numeric_cols)
+    lgb_result = run_lightgbm_ensemble(train_df, test_df, y_test, categorical_cols, numeric_cols)
     all_results.append(lgb_result)
 
     # create visualization
