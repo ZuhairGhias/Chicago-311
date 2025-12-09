@@ -44,9 +44,8 @@ def main():
     df = df_raw[cols].copy()
     df = df.dropna(subset=['RESPONSE_TIME_DAYS'])
 
-    # sample for faster processing (optional - remove for full dataset)
-    np.random.seed(42)
-    df_sample = df.sample(n=min(50000, len(df)), random_state=42).copy()
+    # use full dataset
+    df_sample = df.copy()
 
     print(f"Dataset size: {len(df_sample)} samples")
 

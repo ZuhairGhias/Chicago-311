@@ -337,7 +337,7 @@ def main():
     print("="*70 + "\n")
 
     # load data with temporal split (includes P99 capping)
-    train_df, _, test_df = load_and_split_data(sample_size=5000, use_validation=True)
+    train_df, _, test_df = load_and_split_data(sample_size=None, use_validation=True)
 
     # sort training data by date for time-series CV
     train_df = train_df.sort_values('CREATED_DATE').reset_index(drop=True)
